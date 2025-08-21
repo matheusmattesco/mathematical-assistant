@@ -1,16 +1,16 @@
 import re
 
 math_words = {
-    "vezes": "*",
+    "times": "*",
     "x": "*",
     "mult": "*",
-    "mais": "+",
-    "menos": "-",
-    "dividido": "/",
-    "sobre": "/",
-    "raiz": "**0.5",
-    "quadrado": "**2",
-    "cubo": "**3",
+    "plus": "+",
+    "minus": "-",
+    "divided": "/",
+    "over": "/",
+    "square root": "**0.5",
+    "square": "**2",
+    "cube": "**3",
 }
 
 def is_math_question(text):
