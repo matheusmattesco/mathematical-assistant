@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 import re
 import time
-
+import sympy as sp
 
 load_dotenv()
 hf_token = os.getenv("HF_TOKEN")
@@ -35,13 +35,56 @@ def is_math_question(text):
     has_math_word = any(word in text.lower() for word in math_words)
     return has_number and has_math_word
 
-def text_to_math_expr(text):
+def text_to_math_expr(text, complex_math=False):
     expr = text.lower()
     for word, op in math_words.items():
         expr = expr.replace(word, op)
-    expr = re.sub(r"[^0-9\+\-\*/\.\(\)\^]", "", expr)
+    if complex_math:
+
+        expr = re.sub(r"[^0-9a-z\+\-\*/\.\(\)\^]", "", expr)
+    else:
+        expr = re.sub(r"[^0-9\+\-\*/\.\(\)\^]", "", expr)
     expr = expr.replace("^", "**")
     return expr
+
+complex_math_keywords = ["integral", "derivative", "diff", "sin", "cos", "tan", "log", "sqrt", "exp"]
+
+def is_complex_math(text):
+    return any(word in text.lower() for word in complex_math_keywords)
+
+import sympy as sp
+import re
+
+def calc_sympy(expr):
+    x = sp.symbols('x')
+
+    expr = expr.replace("sqrt", "sp.sqrt")
+    expr = expr.replace("log", "sp.log")
+    expr = expr.replace("sin", "sp.sin")
+    expr = expr.replace("cos", "sp.cos")
+    expr = expr.replace("tan", "sp.tan")
+    expr = expr.replace("^", "**")
+
+    try:
+        if expr.startswith("derivative") or expr.startswith("diff"):
+            inner = re.search(r"\((.*),\s*x\)", expr)
+            if inner:
+                f_expr = eval(inner.group(1))
+                return sp.diff(f_expr, x)
+
+        elif expr.startswith("integral"):
+            inner = re.search(r"\((.*?)(?:,\s*x)?\)", expr)
+            if inner:
+                f_expr = eval(inner.group(1))
+                if 'x' not in str(f_expr):
+                    return f_expr * x
+                return sp.integrate(f_expr, x)
+
+        else:
+            return eval(expr)
+    except Exception as e:
+        return f"Erro: {e}"
+
 
 def smart_chat(user_input, max_tokens=50):
     print("Gemma: pensando...", end="", flush=True)
@@ -50,7 +93,15 @@ def smart_chat(user_input, max_tokens=50):
         print(".", end="", flush=True)
     print()
 
-    if is_math_question(user_input):
+    if is_complex_math(user_input):
+        expr = text_to_math_expr(user_input, complex_math=True)
+        result = calc_sympy(expr)
+        if result is not None:
+            return f"[Calculadora Complexa] {result}"
+        else:
+            return "[Calculadora Complexa] Erro ao calcular a expressão."
+    
+    elif is_math_question(user_input):
         expr = text_to_math_expr(user_input)
         try:
             result = eval(expr, {"__builtins__": None}, {})
